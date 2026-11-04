@@ -1,0 +1,17 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {simulateCPU,runSequential,DataCache,program} from '../assets/cpu-hardware.js';
+for(const name of ['mixed','forward','load','branch','cache','compressed'])for(const cold of [false,true])test(`${name}: ${cold?'cold':'warm'} pipeline matches sequential execution`,()=>{const t=simulateCPU(name,cold),ref=runSequential(t.instructions);assert.deepEqual(t.regs,ref.regs);for(const [a,v]of Object.entries(ref.memory))assert.equal(t.memory[a],v);assert.ok(t.last<149);});
+test('load-use freezes fetch/decode and injects exactly one bubble',()=>{const t=simulateCPU('load'),stalls=t.frames.filter(f=>f.loadStall);assert.equal(stalls.length,1);for(const f of stalls){const next=t.frames[f.cycle+1];assert.equal(next.pc,f.pc);assert.equal(next.stages[1].id,f.stages[1].id);assert.equal(next.stages[2],null);}});
+test('global waits hold all pipeline registers; EX results forward to ID',()=>{const t=simulateCPU('mixed',true);for(const f of t.frames.filter(f=>f.globalStall)){assert.deepEqual(t.frames[f.cycle+1].stages.map(i=>i?.id),f.stages.map(i=>i?.id));assert.equal(t.frames[f.cycle+1].pc,f.pc);}assert.ok(t.frames.some(f=>f.forward.some(x=>x.from==='EX'&&x.to==='ID')));});
+test('taken branches discard both younger instructions',()=>{const t=simulateCPU('branch'),f=t.frames.find(f=>f.flush),next=t.frames[f.cycle+1];assert.equal(next.pc,f.branchTarget);assert.equal(next.stages[1],null);assert.equal(next.stages[2],null);assert.equal(t.regs[2],0);assert.equal(t.memory[4],0);});
+test('compressed instruction addresses advance two bytes',()=>assert.deepEqual(program('compressed').map(i=>i.pc),[0,2,4,8,10]));
+test('two-way cache promotes way one and evicts the other resident line',()=>{const memory={0:1,256:2,512:3},c=new DataCache(memory,0);c.access(0);c.store(0,99);c.access(256);assert.equal(c.access(0).value,99);c.access(512);assert.deepEqual(c.sets[0].map(x=>x.tag),[2,0]);assert.equal(memory[256],2);});
+import {quicksortProgram,sortData,sortGold} from '../assets/cpu-quicksort.js';
+for(const n of [8,16,32])for(const cold of [false,true])test(`quicksort ${n}: real instruction image sorts signed data (${cold?'cold':'warm'})`,()=>{
+ const t=simulateCPU('quicksort',cold,{n}),expected=sortData.slice(32,32+n).sort((a,b)=>a-b),ref=runSequential(quicksortProgram(n),Object.fromEntries(sortData.map((v,i)=>[i*4,v])));
+ assert.deepEqual(Array.from({length:n},(_,i)=>t.memory[(32+i)*4]),expected);assert.deepEqual(t.regs,ref.regs);for(let i=0;i<256;i++)assert.equal(t.memory[i*4],ref.memory[i*4]);
+ for(const f of t.frames){if(f.store){assert.equal(f.stages[3].op,'sw');assert.equal(t.frames[f.cycle+1].memory[f.store.address],f.store.value);}else if(f.cycle<t.last){for(let i=32;i<32+n;i++)assert.equal(t.frames[f.cycle+1].memory[i*4],f.memory[i*4]);}}
+ assert.equal(t.frames.some(f=>f.mulPhase),false);
+});
+test('original 224-item program matches supplied D_gold exactly',()=>{const ref=runSequential(quicksortProgram(224),Object.fromEntries(sortData.map((v,i)=>[i*4,v])));assert.deepEqual(sortGold.map((_,i)=>ref.memory[i*4]),sortGold);});
+test('multiply occupies EX for a hold clock then a ready clock',()=>{const t=simulateCPU('compressed'),i=t.frames.findIndex(f=>f.mulStall),a=t.frames[i],b=t.frames[i+1];assert.equal(a.mulPhase,1);assert.equal(b.mulPhase,2);assert.equal(a.stages[2].id,b.stages[2].id);assert.equal(a.globalStall,true);assert.equal(b.globalStall,false);assert.equal(t.frames[i+2].stages[3].result,77);});
