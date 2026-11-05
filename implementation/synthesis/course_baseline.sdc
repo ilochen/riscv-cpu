@@ -1,0 +1,15 @@
+# Baseline constraints from the course starter; library setup is supplied by the local tool environment.
+set cycle  10        
+create_clock -name CLK -period $cycle [get_ports clk]
+set_fix_hold                          [get_clocks CLK]
+set_dont_touch_network                [get_clocks CLK]
+set_ideal_network                     [get_ports clk]
+set_clock_uncertainty            0.1  [get_clocks CLK] 
+set_clock_latency                0.5  [get_clocks CLK] 
+set_max_fanout 6 [all_inputs] 
+set_drive        1     [all_inputs]
+set_load         1     [all_outputs]
+set t_in   0.1
+set t_out  0.1
+set_input_delay  $t_in  -clock CLK [remove_from_collection [all_inputs] [get_ports clk]]
+set_output_delay $t_out -clock CLK [all_outputs]

@@ -46,7 +46,7 @@ module	TestBed(
 
 	// state machine
 	always@(posedge clk) begin
-		if( (state_r==S_IDLE) && (wen) ) begin
+		if( (state_r==S_IDLE) && wen && (addr < 256) ) begin
 			pseudo_mem[addr] = data;
 		end
 	end
