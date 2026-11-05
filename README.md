@@ -53,3 +53,5 @@ The quicksort generator uses `data.npy`, NumPy, and both instruction images. Its
 ## Implementation archive
 
 [Mapped synthesis Verilog](implementation/synthesis/CHIP_syn.v) contains the submitted design connectivity; simulating it requires separately supplied authorized cell models. [Course baseline constraints](implementation/synthesis/course_baseline.sdc) give the starter 10 ns clock and I/O assumptions. This file documents the starter, and does not establish the timing target or multicycle path exceptions of the final synthesized run.
+
+The [timing archive](docs/timing-archive.md) identifies the paired design-specific SDF exports, their hashes, and the requirements for a separate gate-level run.
