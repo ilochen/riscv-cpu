@@ -1,5 +1,7 @@
 # RISC-V CPU and Caches
 
+[![Validation](https://github.com/ilochen/riscv-cpu/actions/workflows/check.yml/badge.svg)](https://github.com/ilochen/riscv-cpu/actions/workflows/check.yml)
+
 A five-stage RISC-V processor with forwarding, hazard interlocks, compressed-instruction assembly, multicycle multiplication, and separate instruction/data caches. The front end uses a 16-line direct-mapped I-cache; the D-cache has 16 sets and two ways. The multiplier uses hold/capture control so ordinary instructions retain the base pipeline clock.
 
 [Interactive architecture and design decisions](https://ilochen.github.io/projects/riscv-cpu/)
@@ -48,10 +50,16 @@ The system harness connects CHIP to separate 128-bit instruction and data memori
 
 For quicksort the checker compares the 256-word data image, which includes the sorted subrange at words 32–255. Stack traffic occurs outside the checked range. The ported bench explicitly bounds its comparison-memory write index so that out-of-range stack writes cannot wrap into the checker array in a two-state simulator. The test returns a failure status on any mismatch or timeout.
 
-The quicksort generator uses `data.npy`, NumPy, and both instruction images. Its relative paths assume the current directory is a writable copy of `workloads/quicksort/`. The convolution and extension generators include their assembly or reference inputs wherever supplied.
+The quicksort generator uses `data.npy`, NumPy, and both instruction images. Its relative paths assume the current directory is a writable copy of `workloads/quicksort/`. The convolution and extension generators include their assembly or reference inputs wherever supplied. The convolution generator additionally requires PyTorch; the quicksort generator requires NumPy. These packages are only needed to regenerate workloads, not to run the shipped RTL regressions.
 
 ## Implementation archive
 
 [Mapped synthesis Verilog](implementation/synthesis/CHIP_syn.v) contains the submitted design connectivity; simulating it requires separately supplied authorized cell models. [Course baseline constraints](implementation/synthesis/course_baseline.sdc) give the starter 10 ns clock and I/O assumptions. This file documents the starter, and does not establish the timing target or multicycle path exceptions of the final synthesized run.
 
 The [timing archive](docs/timing-archive.md) identifies the paired design-specific SDF exports, their hashes, and the requirements for a separate gate-level run.
+
+## Validation snapshot
+
+All ten listed RTL workloads passed, including compressed and uncompressed quicksort, both convolution images, multiply, branch prediction, and hazard cases.
+
+Rechecked on 6 November 2026. Simulation results establish the covered functional behavior; physical implementation measurements are identified separately in the documentation.
